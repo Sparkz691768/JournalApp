@@ -169,7 +169,7 @@ else
     private void OpenDay(DateOnly date)
     {
         // Navigate to Today page but with selected date.
-        // You must update /today page to read this query parameter.
+    
         var key = date.ToString("yyyy-MM-dd");
         Nav.NavigateTo($"/today?date={key}");
     }

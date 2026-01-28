@@ -21,7 +21,7 @@ public class SecurityService : ISecurityService
 
         var hash = Hash(pin);
 
-        // Try SecureStorage first, fallback to Preferences
+        
         try
         {
             await SecureStorage.SetAsync(PinKey, hash);
@@ -74,10 +74,10 @@ public class SecurityService : ISecurityService
         }
         catch
         {
-            // ignore and fallback
+            
         }
 
-        // Fallback to Preferences
+        
         var pref = Preferences.Get(PinKey, "");
         return string.IsNullOrWhiteSpace(pref) ? null : pref;
     }

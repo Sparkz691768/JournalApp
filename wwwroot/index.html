@@ -1,33 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Meta configuration -->
     <meta charset="utf-8" />
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
     <title>JournalApp</title>
+
+    <!-- Required for Blazor routing -->
     <base href="/" />
 
+    <!-- UI and app styles -->
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="JournalApp.styles.css" />
+
+    <!-- Favicon placeholder -->
     <link rel="icon" href="data:,">
 </head>
 
 <body>
+    <!-- Safe area for mobile devices -->
     <div class="status-bar-safe-area"></div>
 
+    <!-- Blazor app root -->
     <div id="app">Loading...</div>
 
+    <!-- Error display -->
     <div id="blazor-error-ui" data-nosnippet>
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
 
-    <!-- Load the Blazor WebView runtime -->
+    <!-- Blazor WebView runtime -->
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
-    <!-- Force-start Blazor (so @onclick works) -->
+    <!-- Start Blazor -->
     <script>
         Blazor.start();
     </script>

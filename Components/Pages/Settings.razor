@@ -88,7 +88,7 @@
         <h5 class="mb-2">🎨 Theme</h5>
         <p class="mb-2">Theme (stored locally): <b>@(isDark ? "Dark" : "Light")</b></p>
 
-        <!-- ✅ FIXED: call ToggleTheme instead of setting message only -->
+        
         <button type="button"
                 class="btn btn-secondary"
                 disabled="@_saving"
@@ -116,7 +116,7 @@
         {
             hasPin = await SecurityService.HasPinAsync();
 
-            // ✅ SecureStorage may fail on some platforms, so fallback to Preferences
+            
             string? saved = null;
             try
             {
@@ -124,7 +124,7 @@
             }
             catch
             {
-                // ignore SecureStorage errors
+                
             }
 
             if (string.IsNullOrWhiteSpace(saved))
@@ -148,7 +148,7 @@
         message = "";
     }
 
-    // ✅ after setting PIN, force lock on next restart
+    //  after setting PIN, force lock on next restart
     private async Task SetPin()
     {
         if (_saving || !IsValidPin(newPin)) return;
@@ -160,7 +160,7 @@
         {
             await SecurityService.SetPinAsync(newPin);
 
-            // ✅ ensure app asks for PIN after restart
+            // to ensure app asks for PIN after restart
             Preferences.Set("unlocked", false);
 
             message = "PIN set successfully. App will ask for PIN after restart.";
@@ -177,7 +177,7 @@
         }
     }
 
-    // ✅ after removing PIN, ensure app doesn't require unlock anymore
+    
     private async Task RemovePin()
     {
         if (_saving || string.IsNullOrWhiteSpace(verifyPin)) return;
@@ -196,7 +196,7 @@
 
             await SecurityService.ClearPinAsync();
 
-            // ✅ No PIN means no lock needed
+            
             Preferences.Set("unlocked", true);
 
             message = "PIN removed.";
@@ -225,7 +225,7 @@
             isDark = !isDark;
             var value = isDark ? "dark" : "light";
 
-            // ✅ fallback if SecureStorage fails
+           
             try
             {
                 await SecureStorage.SetAsync("theme", value);
@@ -237,7 +237,7 @@
 
             message = $"Theme set to {(isDark ? "Dark" : "Light")}. Restart app to apply.";
 
-            // ✅ update UI immediately
+            //  update UI immediately
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)

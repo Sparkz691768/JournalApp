@@ -153,7 +153,7 @@ else
             _editingId = null;
             await LoadTags();
 
-            // Clear message after 3 seconds
+            // Clear message 
             await Task.Delay(3000);
             _message = "";
         }
@@ -205,7 +205,7 @@ else
             System.Diagnostics.Debug.WriteLine($"Tag deleted with id: {id}");
             await LoadTags();
 
-            // Clear message after 3 seconds
+            // Clear message 
             await Task.Delay(3000);
             _message = "";
         }

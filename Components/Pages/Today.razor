@@ -112,11 +112,11 @@ else
     private bool _loading = true;
     private bool _hasExisting;
 
-    // ✅ NEW: Calendar passes /today?date=yyyy-MM-dd
+    //  Calendar passes /today?date=yyyy-MM-dd
     [SupplyParameterFromQuery(Name = "date")]
     public string? Date { get; set; }
 
-    // ✅ NEW: Active date (defaults to today)
+    //  Active date (defaults to today)
     private DateOnly _activeDate = DateOnly.FromDateTime(DateTime.Now);
 
     private string _title = "";
@@ -136,7 +136,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // ✅ Read query date if provided
+        
         if (!string.IsNullOrWhiteSpace(Date) && DateOnly.TryParse(Date, out var d))
             _activeDate = d;
 
@@ -227,7 +227,7 @@ else
     {
         _message = "";
 
-        // ✅ CHANGED: load entry by active date
+        //  load entry by active date
         var e = await Journal.GetByDateAsync(_activeDate);
 
         if (e == null)
@@ -252,7 +252,7 @@ else
             ? MoodMap.GetCategory(e.SecondaryMood1.Value).ToString()
             : "";
 
-        // If you later store tag IDs per entry, reload them here.
+        
         _selectedTagIds.Clear();
         UpdateSelectedTagNames();
     }
@@ -267,7 +267,7 @@ else
         var primary = ParseMoodOrNull(_primaryMoodText) ?? MoodName.Calm;
         var secondary = ParseMoodOrNull(_secondary1Text);
 
-        // ✅ CHANGED: save entry by active date
+        //  save entry by active date
         var saved = await Journal.UpsertAsync(
             _activeDate,
             _title,
@@ -286,7 +286,7 @@ else
     {
         _message = "";
 
-        // ✅ CHANGED: delete entry by active date
+        //  delete entry by active date
         await Journal.DeleteByDateAsync(_activeDate);
         await Load();
         _message = $"Deleted entry for {_activeDate:yyyy-MM-dd}.";

@@ -85,11 +85,6 @@
             _loading = false;
         }
 
-        // ✅ IMPORTANT CHANGE:
-        // If no PIN exists, do NOT auto-set unlocked=true and auto-redirect.
-        // This prevents the "permanent bypass" issue after a PIN is created later.
-        //
-        // We simply show the "No PIN is set" UI and let the user continue manually.
     }
 
     private async Task Unlock()
@@ -110,7 +105,7 @@
             return;
         }
 
-        // ✅ Success: mark unlocked and go to Home
+        // mark unlocked and go to Home
         Preferences.Set("unlocked", true);
         Nav.NavigateTo("/", replace: true);
     }
