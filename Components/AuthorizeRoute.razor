@@ -1,0 +1,8 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Nav
+
+<RouteView RouteData="@RouteData" DefaultLayout="@typeof(JournalApp.Components.Layout.MainLayout)" />
+
+@code {
+    [Parameter] public RouteData RouteData { get; set; } = default!;
+}

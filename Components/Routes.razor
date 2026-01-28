@@ -1,13 +1,48 @@
-﻿@using JournalApp.Components.Layout
+﻿@using JournalApp.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Routing
+@inject ISecurityService Security
+@inject NavigationManager Nav
 
-<Router AppAssembly="@typeof(App).Assembly">
+<Router AppAssembly="@typeof(App).Assembly"
+        OnNavigateAsync="GuardNavigation">
+
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <AuthorizeRoute routeData="routeData" />
     </Found>
 
     <NotFound>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <JournalApp.Components.Pages.NotFound />
+        <LayoutView Layout="@typeof(JournalApp.Components.Layout.MainLayout)">
+            <p>Page not found.</p>
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    private async Task GuardNavigation(NavigationContext context)
+    {
+        // MAUI/Blazor Hybrid: context.Path may be "" on startup
+        var raw = context?.Path ?? "";
+        var target = raw.TrimStart('/');
+
+        // remove query string if any
+        var qIndex = target.IndexOf('?');
+        if (qIndex >= 0)
+            target = target[..qIndex];
+
+        target = target.ToLowerInvariant();
+
+        // ✅ Allow lock and settings without unlock
+        if (target.StartsWith("lock") || target.StartsWith("settings"))
+            return;
+
+        var hasPin = await Security.HasPinAsync();
+        var unlocked = Preferences.Get("unlocked", false);
+
+        if (hasPin && !unlocked)
+        {
+            // MAUI-safe redirect (no PreventNavigation available)
+            await Task.Yield();
+            Nav.NavigateTo("/lock", replace: true);
+        }
+    }
+}
