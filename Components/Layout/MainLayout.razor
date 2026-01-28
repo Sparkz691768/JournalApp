@@ -1,7 +1,6 @@
 ﻿@inherits LayoutComponentBase
 
-
-<div class="page">
+<div class="page @ThemeClass">
     <div class="sidebar">
         <NavMenu />
     </div>
@@ -12,3 +11,24 @@
         </article>
     </main>
 </div>
+
+@code {
+    private string ThemeClass = "theme-light";
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? saved = null;
+        try
+        {
+            saved = await SecureStorage.GetAsync("theme");
+        }
+        catch { }
+
+        if (string.IsNullOrWhiteSpace(saved))
+            saved = Preferences.Get("theme", "light");
+
+        ThemeClass = string.Equals(saved, "dark", StringComparison.OrdinalIgnoreCase)
+            ? "theme-dark"
+            : "theme-light";
+    }
+}

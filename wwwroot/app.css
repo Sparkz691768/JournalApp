@@ -1,4 +1,4 @@
-/* ===== Base ===== */
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     height: 100%;
@@ -22,8 +22,7 @@ a, .btn-link {
     padding-top: 1.1rem;
 }
 
-/* ===== IMPORTANT: Layout + Click Fixes for MAUI Blazor ===== */
-/* This prevents sidebar/nav from covering your pages and stealing clicks */
+
 .page {
     display: flex;
     min-height: 100vh;
@@ -39,28 +38,25 @@ a, .btn-link {
     overflow-y: auto;
 }
 
-/* In your MainLayout you use <main class="main"> ... */
 .main {
     flex: 1;
     min-width: 0;
     position: relative;
-    z-index: 2; /* content above any sidebar layers */
+    z-index: 2; 
     pointer-events: auto;
 }
 
-/* Ensure content can receive clicks */
 article.content, .content {
     position: relative;
     z-index: 3;
     pointer-events: auto;
 }
 
-/* Prevent any accidental overlay from blocking */
 .sidebar * {
     pointer-events: auto;
 }
 
-/* ===== Validation styles ===== */
+
 h1:focus {
     outline: none;
 }
@@ -77,7 +73,7 @@ h1:focus {
     color: #e50000;
 }
 
-/* ===== Blazor error UI ===== */
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
@@ -143,4 +139,105 @@ h1:focus {
     .flex-column, .navbar-brand {
         padding-left: env(safe-area-inset-left);
     }
+}
+
+
+/* Light theme (default) */
+.theme-light {
+    background-color: #ffffff;
+    color: #111827;
+}
+
+/* Dark theme */
+.theme-dark {
+    background-color: #0b1220;
+    color: #e5e7eb;
+}
+
+
+.theme-light .page,
+.theme-light .main {
+    background-color: #ffffff;
+    color: #111827;
+}
+
+.theme-dark .page,
+.theme-dark .main,
+.theme-dark article.content,
+.theme-dark .content {
+    background-color: #0b1220;
+    color: #e5e7eb;
+}
+
+
+.theme-light .sidebar {
+    background-color: #ffffff;
+    border-right: 1px solid #ddd;
+}
+
+.theme-dark .sidebar {
+    background-color: #020617;
+    border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+.theme-dark .card {
+    background-color: #111827;
+    color: #e5e7eb;
+    border-color: rgba(255,255,255,0.12);
+}
+
+
+.theme-dark .text-muted {
+    color: rgba(229,231,235,0.7) !important;
+}
+
+
+.theme-dark a,
+.theme-dark .btn-link {
+    color: #7dd3fc;
+}
+
+
+.theme-dark .form-control,
+.theme-dark .form-select,
+.theme-dark textarea,
+.theme-dark input {
+    background-color: #0f172a;
+    color: #e5e7eb;
+    border-color: rgba(255,255,255,0.15);
+}
+
+    .theme-dark .form-control::placeholder,
+    .theme-dark textarea::placeholder,
+    .theme-dark input::placeholder {
+        color: rgba(229,231,235,0.45);
+    }
+
+    
+    .theme-dark .btn:focus,
+    .theme-dark .btn:active:focus,
+    .theme-dark .btn-link.nav-link:focus,
+    .theme-dark .form-control:focus,
+    .theme-dark .form-check-input:focus {
+        box-shadow: 0 0 0 0.1rem rgba(15, 23, 42, 0.8), 0 0 0 0.25rem rgba(56, 189, 248, 0.35);
+    }
+
+
+.theme-dark .nav-link {
+    color: rgba(229,231,235,0.85);
+}
+
+    .theme-dark .nav-link.active {
+        color: #ffffff;
+    }
+
+.theme-dark .navbar,
+.theme-dark .top-row {
+    background-color: #020617 !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+
+.theme-dark #blazor-error-ui {
+    color-scheme: dark only;
 }
