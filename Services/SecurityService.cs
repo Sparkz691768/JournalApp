@@ -25,6 +25,7 @@ public class SecurityService : ISecurityService
         try
         {
             await SecureStorage.SetAsync(PinKey, hash);
+
         }
         catch
         {

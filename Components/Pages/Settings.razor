@@ -1,9 +1,9 @@
 ﻿@page "/settings"
 @using JournalApp.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Web
 @inject ISecurityService SecurityService
 
 <h3 class="mb-3">Settings</h3>
-
 
 <div class="card shadow-sm" style="max-width:650px;">
     <div class="card-body">
@@ -27,7 +27,7 @@
                 <button type="button"
                         class="btn btn-primary"
                         disabled="@(_saving || !IsValidPin(newPin))"
-                        @onclick="@SetPin">
+                        @onclick="SetPin">
                     @(_saving ? "Saving..." : "Set PIN")
                 </button>
 
@@ -88,12 +88,13 @@
         <h5 class="mb-2">🎨 Theme</h5>
         <p class="mb-2">Theme (stored locally): <b>@(isDark ? "Dark" : "Light")</b></p>
 
+        <!-- ✅ FIXED: call ToggleTheme instead of setting message only -->
         <button type="button"
                 class="btn btn-secondary"
-                @onclick="@(() => message = "THEME BUTTON CLICKED")">
+                disabled="@_saving"
+                @onclick="ToggleTheme">
             Toggle Theme
         </button>
-
 
         <p class="text-muted mt-2 mb-0" style="font-size:0.9rem;">
             (Theme value is saved, but your app UI must apply it in layout/app startup.)
@@ -115,7 +116,7 @@
         {
             hasPin = await SecurityService.HasPinAsync();
 
-            // ✅ MIN CHANGE: SecureStorage may fail on some platforms, so fallback to Preferences
+            // ✅ SecureStorage may fail on some platforms, so fallback to Preferences
             string? saved = null;
             try
             {
@@ -147,32 +148,36 @@
         message = "";
     }
 
+    // ✅ after setting PIN, force lock on next restart
     private async Task SetPin()
     {
+        if (_saving || !IsValidPin(newPin)) return;
 
-        message = "btn clicked";
-        // if (_saving || !IsValidPin(newPin)) return;
+        message = "";
+        _saving = true;
 
-        // message = "";
-        // _saving = true;
+        try
+        {
+            await SecurityService.SetPinAsync(newPin);
 
-        // try
-        // {
-        //     await SecurityService.SetPinAsync(newPin);
-        //     message = "PIN set successfully.";
-        //     hasPin = true;
-        //     newPin = "";
-        // }
-        // catch (Exception ex)
-        // {
-        //     message = "Failed to set PIN:\n" + ex.Message;
-        // }
-        // finally
-        // {
-        //     _saving = false;
-        // }
+            // ✅ ensure app asks for PIN after restart
+            Preferences.Set("unlocked", false);
+
+            message = "PIN set successfully. App will ask for PIN after restart.";
+            hasPin = true;
+            newPin = "";
+        }
+        catch (Exception ex)
+        {
+            message = "Failed to set PIN:\n" + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
 
+    // ✅ after removing PIN, ensure app doesn't require unlock anymore
     private async Task RemovePin()
     {
         if (_saving || string.IsNullOrWhiteSpace(verifyPin)) return;
@@ -190,6 +195,10 @@
             }
 
             await SecurityService.ClearPinAsync();
+
+            // ✅ No PIN means no lock needed
+            Preferences.Set("unlocked", true);
+
             message = "PIN removed.";
             hasPin = false;
             verifyPin = "";
@@ -216,7 +225,7 @@
             isDark = !isDark;
             var value = isDark ? "dark" : "light";
 
-            // ✅ MIN CHANGE: fallback if SecureStorage fails
+            // ✅ fallback if SecureStorage fails
             try
             {
                 await SecureStorage.SetAsync("theme", value);
@@ -227,6 +236,9 @@
             }
 
             message = $"Theme set to {(isDark ? "Dark" : "Light")}. Restart app to apply.";
+
+            // ✅ update UI immediately
+            await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {

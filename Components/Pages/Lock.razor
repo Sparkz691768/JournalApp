@@ -1,31 +1,72 @@
 ﻿@page "/lock"
+@using JournalApp.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Web
 @inject ISecurityService Security
 @inject NavigationManager Nav
 
-<h3>Unlock</h3>
+<div class="d-flex justify-content-center align-items-center" style="min-height:75vh;">
+    <div class="card shadow-sm" style="max-width:420px; width:100%;">
+        <div class="card-body p-4">
 
-@if (_loading)
-{
-    <p>Checking security...</p>
-}
-else if (!_hasPin)
-{
-    <p>No PIN is set. App is unlocked.</p>
-    <button class="btn btn-primary" @onclick="GoHome">Continue</button>
-}
-else
-{
-    <div style="max-width:320px;">
-        <input class="form-control" placeholder="Enter PIN" type="password" @bind="_pin" />
-        <div style="margin-top:10px;">
-            <button class="btn btn-primary" @onclick="Unlock">Unlock</button>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span style="font-size:1.3rem;">🔒</span>
+                <h4 class="mb-0">Unlock Journal</h4>
+            </div>
+
+            <p class="text-muted mb-4">
+                Enter your 4-digit PIN to continue.
+            </p>
+
+            @if (_loading)
+            {
+                <div class="d-flex align-items-center gap-2">
+                    <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                    <span class="text-muted">Checking security...</span>
+                </div>
+            }
+            else if (!_hasPin)
+            {
+                <div class="alert alert-info mb-3">
+                    No PIN is set. You can continue without unlocking.
+                </div>
+
+                <button type="button" class="btn btn-primary w-100" @onclick="GoHome">
+                    Continue
+                </button>
+
+                <div class="text-muted mt-3" style="font-size:0.9rem;">
+                    Tip: Set a PIN from Settings to enable lock on restart.
+                </div>
+            }
+            else
+            {
+                <label class="form-label fw-semibold">PIN</label>
+                <input class="form-control form-control-lg"
+                       placeholder="••••"
+                       type="password"
+                       inputmode="numeric"
+                       maxlength="4"
+                       autocomplete="one-time-code"
+                       @bind="_pin"
+                       @bind:event="oninput" />
+
+                <button type="button"
+                        class="btn btn-primary w-100 mt-3"
+                        disabled="@(_pin.Length != 4)"
+                        @onclick="Unlock">
+                    Unlock
+                </button>
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div class="alert alert-danger mt-3 mb-0">
+                        @_error
+                    </div>
+                }
+            }
         </div>
-        @if (!string.IsNullOrWhiteSpace(_error))
-        {
-            <p style="color:red; margin-top:10px;">@_error</p>
-        }
     </div>
-}
+</div>
 
 @code {
     private bool _loading = true;
@@ -35,26 +76,49 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _hasPin = await Security.HasPinAsync();
-        _loading = false;
+        try
+        {
+            _hasPin = await Security.HasPinAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
 
-        if (!_hasPin)
-            Nav.NavigateTo("/");
+        // ✅ IMPORTANT CHANGE:
+        // If no PIN exists, do NOT auto-set unlocked=true and auto-redirect.
+        // This prevents the "permanent bypass" issue after a PIN is created later.
+        //
+        // We simply show the "No PIN is set" UI and let the user continue manually.
     }
 
     private async Task Unlock()
     {
         _error = "";
+
+        if (string.IsNullOrWhiteSpace(_pin) || _pin.Length != 4 || !_pin.All(char.IsDigit))
+        {
+            _error = "Please enter a 4-digit PIN.";
+            return;
+        }
+
         var ok = await Security.VerifyPinAsync(_pin);
         if (!ok)
         {
-            _error = "Incorrect PIN.";
+            _error = "Incorrect PIN. Please try again.";
             _pin = "";
             return;
         }
 
-        Nav.NavigateTo("/");
+        // ✅ Success: mark unlocked and go to Home
+        Preferences.Set("unlocked", true);
+        Nav.NavigateTo("/", replace: true);
     }
 
-    private void GoHome() => Nav.NavigateTo("/");
+    private void GoHome()
+    {
+        // No PIN case: allow access
+        Preferences.Set("unlocked", true);
+        Nav.NavigateTo("/", replace: true);
+    }
 }
