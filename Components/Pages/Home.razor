@@ -1,11 +1,24 @@
 ﻿@page "/"
+@using JournalApp.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Web
+@inject ISecurityService SecurityService
+@inject NavigationManager Nav
 
-<h2>JournalApp</h2>
-<p>Secure daily journaling with moods, tags, analytics, and PDF export.</p>
+<p class="text-muted">Loading...</p>
 
-<ul>
-    <li>Write one entry per day</li>
-    <li>Search & filter by date, mood, tags</li>
-    <li>Streak and mood analytics</li>
-    <li>PDF export</li>
-</ul>
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var hasPin = await SecurityService.HasPinAsync();
+        var unlocked = Preferences.Get("unlocked", false);
+
+        if (hasPin && !unlocked)
+        {
+            Nav.NavigateTo("/lock", replace: true);
+            return;
+        }
+
+        // ✅ after unlocked, go to your actual homepage page
+        Nav.NavigateTo("/today", replace: true);
+    }
+}
