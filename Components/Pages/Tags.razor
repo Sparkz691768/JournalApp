@@ -1,0 +1,223 @@
+@page "/tags"
+@using JournalApp.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Web
+@inject ITagService TagService
+
+<h3>Manage Tags</h3>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div style="max-width:700px;">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">@(_editingId == null ? "Add New Tag" : "Edit Tag")</h5>
+                
+                <div class="input-group">
+                    <input type="text"
+                           class="form-control"
+                           @bind-value="_tagName"
+                           @bind-value:event="oninput"
+                           placeholder="Enter tag name..."
+                           @onkeydown="HandleKeyDown" />
+
+                    <button class="btn btn-primary" 
+                            type="button" 
+                            @onclick="SaveTag"
+                            disabled="@(_savingTag || string.IsNullOrWhiteSpace(_tagName))">
+                        @(_savingTag ? "Saving..." : (_editingId == null ? "Add Tag" : "Update Tag"))
+                    </button>
+                    @if (_editingId != null)
+                    {
+                        <button class="btn btn-secondary" type="button" @onclick="CancelEdit">Cancel</button>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_message))
+                {
+                    <div class="alert alert-info mt-2 mb-0">@_message</div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div class="alert alert-danger mt-2 mb-0">@_error</div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Tags (@_tags.Count)</h5>
+            </div>
+            <div class="card-body">
+                @if (_tags.Count == 0)
+                {
+                    <p class="text-muted">No tags yet. Create one to get started!</p>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var tag in _tags)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@tag.Name</span>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            type="button" 
+                                            @onclick="() => EditTag(tag)">
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            type="button" 
+                                            @onclick="() => DeleteTag(tag.Id)">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _savingTag = false;
+    private List<Tag> _tags = new();
+    private string _tagName = "";
+    private int? _editingId = null;
+    private string _message = "";
+    private string _error = "";
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SaveTag();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTags();
+        _loading = false;
+    }
+
+    private async Task LoadTags()
+    {
+        try
+        {
+            _error = "";
+            _tags = await TagService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error loading tags: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"LoadTags Error: {ex}");
+        }
+    }
+
+    private async Task SaveTag()
+    {
+        if (string.IsNullOrWhiteSpace(_tagName))
+        {
+            _error = "Tag name cannot be empty.";
+            return;
+        }
+
+        _savingTag = true;
+        _error = "";
+
+        try
+        {
+            if (_editingId == null)
+            {
+                // Create new tag
+                var newTag = await TagService.CreateAsync(_tagName.Trim());
+                _message = "Tag added successfully!";
+                System.Diagnostics.Debug.WriteLine($"Tag created: {newTag.Name}");
+            }
+            else
+            {
+                // Update existing tag
+                var updatedTag = await TagService.UpdateAsync(_editingId.Value, _tagName.Trim());
+                _message = "Tag updated successfully!";
+                System.Diagnostics.Debug.WriteLine($"Tag updated: {updatedTag.Name}");
+            }
+
+            _tagName = "";
+            _editingId = null;
+            await LoadTags();
+
+            // Clear message after 3 seconds
+            await Task.Delay(3000);
+            _message = "";
+        }
+        catch (InvalidOperationException ex)
+        {
+            _error = ex.Message;
+            System.Diagnostics.Debug.WriteLine($"InvalidOperationException: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error saving tag: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"SaveTag Error: {ex}");
+        }
+        finally
+        {
+            _savingTag = false;
+        }
+    }
+
+    private void EditTag(Tag tag)
+    {
+        _tagName = tag.Name;
+        _editingId = tag.Id;
+        _error = "";
+        _message = "";
+    }
+
+    private void OnTagNameInput(ChangeEventArgs e)
+    {
+        _tagName = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        _tagName = "";
+        _editingId = null;
+        _error = "";
+        _message = "";
+    }
+
+    private async Task DeleteTag(int id)
+    {
+        try
+        {
+            _error = "";
+            await TagService.DeleteAsync(id);
+            _message = "Tag deleted successfully!";
+            System.Diagnostics.Debug.WriteLine($"Tag deleted with id: {id}");
+            await LoadTags();
+
+            // Clear message after 3 seconds
+            await Task.Delay(3000);
+            _message = "";
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _error = ex.Message;
+            System.Diagnostics.Debug.WriteLine($"KeyNotFoundException: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error deleting tag: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"DeleteTag Error: {ex}");
+        }
+    }
+}

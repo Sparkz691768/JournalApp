@@ -1,0 +1,240 @@
+﻿@page "/settings"
+@using JournalApp.Services.Interfaces
+@inject ISecurityService SecurityService
+
+<h3 class="mb-3">Settings</h3>
+
+
+<div class="card shadow-sm" style="max-width:650px;">
+    <div class="card-body">
+
+        <h5 class="mb-2">🔒 Security (PIN)</h5>
+
+        @if (!hasPin)
+        {
+            <p class="text-muted">No PIN is set.</p>
+
+            <label class="form-label"><b>New PIN</b> (4 digits)</label>
+            <input type="password"
+                   class="form-control"
+                   inputmode="numeric"
+                   maxlength="4"
+                   placeholder="e.g., 1234"
+                   @bind-value="newPin"
+                   @bind-value:event="oninput" />
+
+            <div class="d-flex gap-2 mt-3">
+                <button type="button"
+                        class="btn btn-primary"
+                        disabled="@(_saving || !IsValidPin(newPin))"
+                        @onclick="@SetPin">
+                    @(_saving ? "Saving..." : "Set PIN")
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@_saving"
+                        @onclick="ClearMessage">
+                    Clear
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(newPin) && !IsValidPin(newPin))
+            {
+                <div class="text-danger mt-2" style="font-size:0.9rem;">
+                    PIN must be exactly 4 digits (0–9).
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-muted">PIN is currently enabled.</p>
+
+            <label class="form-label"><b>Enter PIN to remove</b></label>
+            <input type="password"
+                   class="form-control"
+                   inputmode="numeric"
+                   maxlength="4"
+                   placeholder="Enter PIN"
+                   @bind-value="verifyPin"
+                   @bind-value:event="oninput" />
+
+            <div class="d-flex gap-2 mt-3">
+                <button type="button"
+                        class="btn btn-danger"
+                        disabled="@(_saving || string.IsNullOrWhiteSpace(verifyPin))"
+                        @onclick="RemovePin">
+                    @(_saving ? "Working..." : "Remove PIN")
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@_saving"
+                        @onclick="ClearMessage">
+                    Clear
+                </button>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <div class="alert alert-info mt-3 mb-0" style="white-space:pre-wrap;">
+                @message
+            </div>
+        }
+
+        <hr class="my-4" />
+
+        <h5 class="mb-2">🎨 Theme</h5>
+        <p class="mb-2">Theme (stored locally): <b>@(isDark ? "Dark" : "Light")</b></p>
+
+        <button type="button"
+                class="btn btn-secondary"
+                @onclick="@(() => message = "THEME BUTTON CLICKED")">
+            Toggle Theme
+        </button>
+
+
+        <p class="text-muted mt-2 mb-0" style="font-size:0.9rem;">
+            (Theme value is saved, but your app UI must apply it in layout/app startup.)
+        </p>
+    </div>
+</div>
+
+@code {
+    private bool hasPin;
+    private string newPin = "";
+    private string verifyPin = "";
+    private string message = "";
+    private bool isDark;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            hasPin = await SecurityService.HasPinAsync();
+
+            // ✅ MIN CHANGE: SecureStorage may fail on some platforms, so fallback to Preferences
+            string? saved = null;
+            try
+            {
+                saved = await SecureStorage.GetAsync("theme");
+            }
+            catch
+            {
+                // ignore SecureStorage errors
+            }
+
+            if (string.IsNullOrWhiteSpace(saved))
+                saved = Preferences.Get("theme", "light");
+
+            isDark = string.Equals(saved, "dark", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            message = "Initialization error:\n" + ex.Message;
+        }
+    }
+
+    private static bool IsValidPin(string pin)
+        => !string.IsNullOrWhiteSpace(pin)
+           && pin.Length == 4
+           && pin.All(char.IsDigit);
+
+    private void ClearMessage()
+    {
+        message = "";
+    }
+
+    private async Task SetPin()
+    {
+
+        message = "btn clicked";
+        // if (_saving || !IsValidPin(newPin)) return;
+
+        // message = "";
+        // _saving = true;
+
+        // try
+        // {
+        //     await SecurityService.SetPinAsync(newPin);
+        //     message = "PIN set successfully.";
+        //     hasPin = true;
+        //     newPin = "";
+        // }
+        // catch (Exception ex)
+        // {
+        //     message = "Failed to set PIN:\n" + ex.Message;
+        // }
+        // finally
+        // {
+        //     _saving = false;
+        // }
+    }
+
+    private async Task RemovePin()
+    {
+        if (_saving || string.IsNullOrWhiteSpace(verifyPin)) return;
+
+        message = "";
+        _saving = true;
+
+        try
+        {
+            var ok = await SecurityService.VerifyPinAsync(verifyPin);
+            if (!ok)
+            {
+                message = "Incorrect PIN.";
+                return;
+            }
+
+            await SecurityService.ClearPinAsync();
+            message = "PIN removed.";
+            hasPin = false;
+            verifyPin = "";
+        }
+        catch (Exception ex)
+        {
+            message = "Failed to remove PIN:\n" + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        if (_saving) return;
+
+        _saving = true;
+        message = "";
+
+        try
+        {
+            isDark = !isDark;
+            var value = isDark ? "dark" : "light";
+
+            // ✅ MIN CHANGE: fallback if SecureStorage fails
+            try
+            {
+                await SecureStorage.SetAsync("theme", value);
+            }
+            catch
+            {
+                Preferences.Set("theme", value);
+            }
+
+            message = $"Theme set to {(isDark ? "Dark" : "Light")}. Restart app to apply.";
+        }
+        catch (Exception ex)
+        {
+            message = "Failed to save theme:\n" + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

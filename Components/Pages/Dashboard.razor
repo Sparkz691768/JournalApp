@@ -1,0 +1,220 @@
+﻿@page "/dashboard"
+@using JournalApp.Services.Interfaces
+@inject IAnalyticsService Analytics
+
+<h3 class="mb-3">Dashboard</h3>
+
+@if (_loading)
+{
+    <p>Loading analytics...</p>
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="container-fluid p-0" style="max-width:1000px;">
+
+        <!-- KPI Cards -->
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted">Current Streak</div>
+                        <div style="font-size:2rem; font-weight:700;">@_streak.CurrentStreak</div>
+                        <div class="text-muted">days</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted">Longest Streak</div>
+                        <div style="font-size:2rem; font-weight:700;">@_streak.LongestStreak</div>
+                        <div class="text-muted">days</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="text-muted">Missed Days</div>
+                        <div style="font-size:2rem; font-weight:700;">@_streak.MissedDaysCount</div>
+                        <div class="text-muted">days</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mood + Most frequent -->
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-lg-7">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <b>Mood Distribution (Primary Mood)</b>
+                        <small class="text-muted">overall</small>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Positive</span>
+                                <span><b>@_moods.PositivePct.ToString("0.0")%</b></span>
+                            </div>
+                            <div class="progress" style="height:10px;">
+                                <div class="progress-bar" role="progressbar" style="width:@_moods.PositivePct.ToString("0.0")%"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Neutral</span>
+                                <span><b>@_moods.NeutralPct.ToString("0.0")%</b></span>
+                            </div>
+                            <div class="progress" style="height:10px;">
+                                <div class="progress-bar" role="progressbar" style="width:@_moods.NeutralPct.ToString("0.0")%"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-1">
+                            <div class="d-flex justify-content-between">
+                                <span>Negative</span>
+                                <span><b>@_moods.NegativePct.ToString("0.0")%</b></span>
+                            </div>
+                            <div class="progress" style="height:10px;">
+                                <div class="progress-bar" role="progressbar" style="width:@_moods.NegativePct.ToString("0.0")%"></div>
+                            </div>
+                        </div>
+
+                        <small class="text-muted d-block mt-3">
+                            Tip: keep logging daily to improve streak insights.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header">
+                        <b>Most Frequent Mood</b>
+                    </div>
+                    <div class="card-body">
+                        @if (_mostFrequent == null)
+                        {
+                            <p class="text-muted mb-0">No entries yet.</p>
+                        }
+                        else
+                        {
+                            <div style="font-size:1.5rem; font-weight:700;">
+                                @_mostFrequent
+                            </div>
+                            <div class="text-muted">based on primary mood history</div>
+                        }
+
+                        <hr />
+
+                        <b>Missed Days (last)</b>
+                        @if (_streak.MissedDays == null || _streak.MissedDays.Count == 0)
+                        {
+                            <p class="text-muted mb-0">None 🎉</p>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @foreach (var d in _streak.MissedDays.Take(10))
+                                {
+                                    <span class="badge bg-secondary">@d.ToString("yyyy-MM-dd")</span>
+                                }
+                            </div>
+
+                            @if (_streak.MissedDays.Count > 10)
+                            {
+                                <small class="text-muted d-block mt-2">
+                                    Showing 10 of @_streak.MissedDays.Count missed days.
+                                </small>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Tags -->
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <b>Top Tags</b>
+                        <small class="text-muted">Top @_topTagsLimit</small>
+                    </div>
+                    <div class="card-body">
+                        @if (_topTags.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No tags yet.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Tag</th>
+                                            <th style="width:140px;">Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var kv in _topTags.OrderByDescending(x => x.Value))
+                                        {
+                                            <tr>
+                                                <td>@kv.Key</td>
+                                                <td><span class="badge bg-primary">@kv.Value</span></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string _error = "";
+
+    private StreakInfo _streak = new(0, 0, 0, new());
+    private MoodDistribution _moods = new(0, 0, 0);
+    private MoodName? _mostFrequent;
+    private Dictionary<string, int> _topTags = new();
+
+    private int _topTagsLimit = 10;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _loading = true;
+            _error = "";
+
+            _streak = await Analytics.GetStreakInfoAsync();
+            _moods = await Analytics.GetMoodDistributionAsync();
+            _mostFrequent = await Analytics.GetMostFrequentMoodAsync();
+            _topTags = await Analytics.GetTopTagsAsync(_topTagsLimit);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load dashboard: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

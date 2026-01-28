@@ -1,0 +1,17 @@
+﻿# Visual Studio / MAUI
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+
+# MAUI
+*.apk
+*.aab
+*.ipa
+*.app
+
+# Rider
+.idea/

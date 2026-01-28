@@ -1,0 +1,175 @@
+﻿@page "/calendar"
+@using System.Globalization
+@inject IJournalService Journal
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Calendar</h3>
+
+<div class="d-flex gap-2 align-items-center mb-3">
+    <button type="button" class="btn btn-outline-secondary" @onclick="PrevMonth">◀</button>
+    <div class="fw-semibold" style="min-width:160px; text-align:center;">
+        @_month.ToString("MMMM yyyy", CultureInfo.InvariantCulture)
+    </div>
+    <button type="button" class="btn btn-outline-secondary" @onclick="NextMonth">▶</button>
+
+    <button type="button" class="btn btn-outline-primary ms-auto" @onclick="Reload">
+        Refresh
+    </button>
+</div>
+
+@if (_loading)
+{
+    <div class="alert alert-info">Loading calendar...</div>
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="card shadow-sm" style="max-width:900px;">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0" style="table-layout:fixed;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center">Sun</th>
+                        <th class="text-center">Mon</th>
+                        <th class="text-center">Tue</th>
+                        <th class="text-center">Wed</th>
+                        <th class="text-center">Thu</th>
+                        <th class="text-center">Fri</th>
+                        <th class="text-center">Sat</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var week in _weeks)
+                    {
+                        <tr>
+                            @foreach (var day in week)
+                            {
+                                <td style="height:110px; vertical-align:top;">
+                                    @if (day is null)
+                                    {
+                                        <div></div>
+                                    }
+                                    else
+                                    {
+                                        var key = day.Value.ToString("yyyy-MM-dd");
+                                        var has = _entryKeys.Contains(key);
+
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-semibold">@day.Value.Day</span>
+                                            @if (has)
+                                            {
+                                                <span title="Entry exists">✅</span>
+                                            }
+                                        </div>
+
+                                        <div class="mt-2 d-grid gap-1">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary"
+                                                    @onclick="() => OpenDay(day.Value)">
+                                                Open
+                                            </button>
+                                        </div>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private DateTime _month = new(DateTime.Now.Year, DateTime.Now.Month, 1);
+    private HashSet<string> _entryKeys = new();
+    private List<List<DateOnly?>> _weeks = new();
+
+    private bool _loading = true;
+    private string _error = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        try
+        {
+            _loading = true;
+            _error = "";
+
+            var from = new DateOnly(_month.Year, _month.Month, 1);
+            var to = new DateOnly(_month.Year, _month.Month, DateTime.DaysInMonth(_month.Year, _month.Month));
+
+            var (items, _) = await Journal.GetPagedAsync(1, 5000, from: from, to: to);
+            _entryKeys = items.Select(e => e.EntryDateKey).ToHashSet();
+
+            BuildCalendarGrid();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load calendar: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void BuildCalendarGrid()
+    {
+        _weeks.Clear();
+
+        var first = new DateTime(_month.Year, _month.Month, 1);
+        int offset = (int)first.DayOfWeek; // Sunday=0
+        int days = DateTime.DaysInMonth(_month.Year, _month.Month);
+
+        var week = new List<DateOnly?>(7);
+
+        for (int i = 0; i < offset; i++)
+            week.Add(null);
+
+        for (int d = 1; d <= days; d++)
+        {
+            week.Add(new DateOnly(_month.Year, _month.Month, d));
+
+            if (week.Count == 7)
+            {
+                _weeks.Add(week);
+                week = new List<DateOnly?>(7);
+            }
+        }
+
+        if (week.Count > 0)
+        {
+            while (week.Count < 7) week.Add(null);
+            _weeks.Add(week);
+        }
+    }
+
+    private async Task PrevMonth()
+    {
+        _month = _month.AddMonths(-1);
+        await Reload();
+    }
+
+    private async Task NextMonth()
+    {
+        _month = _month.AddMonths(1);
+        await Reload();
+    }
+
+    private void OpenDay(DateOnly date)
+    {
+        // Navigate to Today page but with selected date.
+        // You must update /today page to read this query parameter.
+        var key = date.ToString("yyyy-MM-dd");
+        Nav.NavigateTo($"/today?date={key}");
+    }
+}

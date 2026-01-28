@@ -1,0 +1,60 @@
+﻿@page "/lock"
+@inject ISecurityService Security
+@inject NavigationManager Nav
+
+<h3>Unlock</h3>
+
+@if (_loading)
+{
+    <p>Checking security...</p>
+}
+else if (!_hasPin)
+{
+    <p>No PIN is set. App is unlocked.</p>
+    <button class="btn btn-primary" @onclick="GoHome">Continue</button>
+}
+else
+{
+    <div style="max-width:320px;">
+        <input class="form-control" placeholder="Enter PIN" type="password" @bind="_pin" />
+        <div style="margin-top:10px;">
+            <button class="btn btn-primary" @onclick="Unlock">Unlock</button>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <p style="color:red; margin-top:10px;">@_error</p>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _hasPin;
+    private string _pin = "";
+    private string _error = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hasPin = await Security.HasPinAsync();
+        _loading = false;
+
+        if (!_hasPin)
+            Nav.NavigateTo("/");
+    }
+
+    private async Task Unlock()
+    {
+        _error = "";
+        var ok = await Security.VerifyPinAsync(_pin);
+        if (!ok)
+        {
+            _error = "Incorrect PIN.";
+            _pin = "";
+            return;
+        }
+
+        Nav.NavigateTo("/");
+    }
+
+    private void GoHome() => Nav.NavigateTo("/");
+}

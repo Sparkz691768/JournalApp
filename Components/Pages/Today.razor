@@ -1,0 +1,294 @@
+﻿@page "/today"
+@using JournalApp.Services.Interfaces
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@inject IJournalService Journal
+@inject ITagService TagService
+
+<h3>Today’s Entry</h3>
+
+@if (_loading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div style="max-width:700px;">
+        <label><b>Title</b></label>
+        <input class="form-control" @bind="_title" />
+
+        <div style="margin-top:10px;">
+            <label><b>Primary Mood</b></label>
+            <input type="text" class="form-control" @bind="_primaryMoodText" placeholder="e.g., Happy, Calm, Stressed..." />
+        </div>
+
+        <div style="margin-top:10px;">
+            <label><b>Secondary Mood (optional)</b></label>
+            <input type="text" class="form-control" @bind="_secondary1Text" placeholder="e.g., Excited, Thoughtful..." />
+        </div>
+
+        <div style="margin-top:10px;">
+            <label><b>Category</b></label>
+            <select class="form-select" @bind="_category">
+                <option value="">-- select category --</option>
+                <option value="Positive">Positive</option>
+                <option value="Neutral">Neutral</option>
+                <option value="Negative">Negative</option>
+            </select>
+        </div>
+
+        <div style="margin-top:10px;">
+            <label><b>Tags</b></label>
+
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <input type="text"
+                       class="form-control"
+                       @bind-value="_newTagName"
+                       @bind-value:event="oninput"
+                       placeholder="Type new tag name..."
+                       @onkeydown="HandleKeyDown" />
+
+                <button class="btn btn-success"
+                        type="button"
+                        @onclick="AddNewTag"
+                        disabled="@(_addingTag || string.IsNullOrWhiteSpace(_newTagName))">
+                    @(_addingTag ? "Adding..." : "Add Tag")
+                </button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_tagError))
+            {
+                <div class="alert alert-danger" style="padding: 8px; margin-bottom: 10px;">@_tagError</div>
+            }
+
+            <div style="border: 1px solid #ced4da; border-radius: 0.375rem; padding: 10px; max-height: 200px; overflow-y: auto;">
+                @if (_availableTags.Count == 0)
+                {
+                    <p class="text-muted" style="margin: 0;">No tags available. Create one using the input above.</p>
+                }
+                else
+                {
+                    @foreach (var tag in _availableTags)
+                    {
+                        <div style="margin-bottom: 8px;">
+                            <input type="checkbox"
+                                   id="tag_@tag.Id"
+                                   @onchange="@((ChangeEventArgs e) => OnTagToggled(tag.Id, (bool)e.Value!))"
+                                   checked="@_selectedTagIds.Contains(tag.Id)" />
+                            <label for="tag_@tag.Id" style="margin-left: 5px; margin-bottom: 0; cursor: pointer;">
+                                @tag.Name
+                            </label>
+                        </div>
+                    }
+                }
+            </div>
+
+            @if (_selectedTagIds.Count > 0)
+            {
+                <small class="text-muted" style="display: block; margin-top: 5px;">
+                    Selected: @string.Join(", ", _selectedTags)
+                </small>
+            }
+        </div>
+
+        <div style="margin-top:10px;">
+            <label><b>Content (Markdown)</b></label>
+            <textarea class="form-control" rows="10" @bind="_content"></textarea>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:10px;">
+            <button type="button" class="btn btn-primary" @onclick="Save">Save</button>
+            <button type="button" class="btn btn-danger" @onclick="Delete" disabled="@(!_hasExisting)">Delete</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <p style="margin-top:10px;">@_message</p>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _hasExisting;
+
+    // ✅ NEW: Calendar passes /today?date=yyyy-MM-dd
+    [SupplyParameterFromQuery(Name = "date")]
+    public string? Date { get; set; }
+
+    // ✅ NEW: Active date (defaults to today)
+    private DateOnly _activeDate = DateOnly.FromDateTime(DateTime.Now);
+
+    private string _title = "";
+    private string _content = "";
+    private string _primaryMoodText = "";
+    private string _secondary1Text = "";
+    private string _category = "";
+    private string _message = "";
+
+    private List<Tag> _availableTags = new();
+    private List<int> _selectedTagIds = new();
+    private List<string> _selectedTags = new();
+
+    private string _newTagName = "";
+    private bool _addingTag = false;
+    private string _tagError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ✅ Read query date if provided
+        if (!string.IsNullOrWhiteSpace(Date) && DateOnly.TryParse(Date, out var d))
+            _activeDate = d;
+
+        await LoadAvailableTags();
+        await Load();
+        _loading = false;
+    }
+
+    private async Task LoadAvailableTags()
+    {
+        try
+        {
+            _availableTags = await TagService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading tags: {ex.Message}");
+        }
+    }
+
+    private void OnTagToggled(int tagId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_selectedTagIds.Contains(tagId))
+                _selectedTagIds.Add(tagId);
+        }
+        else
+        {
+            _selectedTagIds.Remove(tagId);
+        }
+
+        UpdateSelectedTagNames();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await AddNewTag();
+    }
+
+    private async Task AddNewTag()
+    {
+        if (string.IsNullOrWhiteSpace(_newTagName))
+        {
+            _tagError = "Tag name cannot be empty.";
+            return;
+        }
+
+        _addingTag = true;
+        _tagError = "";
+
+        try
+        {
+            var newTag = await TagService.CreateAsync(_newTagName.Trim());
+            _availableTags.Add(newTag);
+
+            // Auto-select the newly created tag
+            if (!_selectedTagIds.Contains(newTag.Id))
+                _selectedTagIds.Add(newTag.Id);
+
+            UpdateSelectedTagNames();
+            _newTagName = "";
+        }
+        catch (InvalidOperationException ex)
+        {
+            _tagError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _tagError = $"Error creating tag: {ex.Message}";
+        }
+        finally
+        {
+            _addingTag = false;
+        }
+    }
+
+    private void UpdateSelectedTagNames()
+    {
+        _selectedTags = _availableTags
+            .Where(t => _selectedTagIds.Contains(t.Id))
+            .Select(t => t.Name)
+            .ToList();
+    }
+
+    private async Task Load()
+    {
+        _message = "";
+
+        // ✅ CHANGED: load entry by active date
+        var e = await Journal.GetByDateAsync(_activeDate);
+
+        if (e == null)
+        {
+            _hasExisting = false;
+            _title = "";
+            _content = "";
+            _primaryMoodText = "";
+            _secondary1Text = "";
+            _category = "";
+            _selectedTagIds.Clear();
+            _selectedTags.Clear();
+            return;
+        }
+
+        _hasExisting = true;
+        _title = e.Title;
+        _content = e.ContentMarkdown;
+        _primaryMoodText = e.PrimaryMood.ToString();
+        _secondary1Text = e.SecondaryMood1?.ToString() ?? "";
+        _category = e.SecondaryMood1.HasValue
+            ? MoodMap.GetCategory(e.SecondaryMood1.Value).ToString()
+            : "";
+
+        // If you later store tag IDs per entry, reload them here.
+        _selectedTagIds.Clear();
+        UpdateSelectedTagNames();
+    }
+
+    private static MoodName? ParseMoodOrNull(string s)
+        => Enum.TryParse<MoodName>(s, ignoreCase: true, out var m) ? m : null;
+
+    private async Task Save()
+    {
+        _message = "";
+
+        var primary = ParseMoodOrNull(_primaryMoodText) ?? MoodName.Calm;
+        var secondary = ParseMoodOrNull(_secondary1Text);
+
+        // ✅ CHANGED: save entry by active date
+        var saved = await Journal.UpsertAsync(
+            _activeDate,
+            _title,
+            _content,
+            primary,
+            secondary,
+            null,
+            _category,
+            _selectedTags);
+
+        _hasExisting = true;
+        _message = $"Saved! Updated: {saved.UpdatedAt:g}";
+    }
+
+    private async Task Delete()
+    {
+        _message = "";
+
+        // ✅ CHANGED: delete entry by active date
+        await Journal.DeleteByDateAsync(_activeDate);
+        await Load();
+        _message = $"Deleted entry for {_activeDate:yyyy-MM-dd}.";
+    }
+}

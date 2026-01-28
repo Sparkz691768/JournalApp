@@ -1,0 +1,114 @@
+﻿@page "/export"
+
+@using JournalApp.Services.Interfaces
+@inject IJournalService JournalService
+@inject IExportService ExportService
+
+<h3 class="mb-3">Export Journal (PDF)</h3>
+
+<div class="card shadow-sm" style="max-width:900px;">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label"><b>From Date</b></label>
+                <input class="form-control"
+                       type="date"
+                       @bind="_fromDt"
+                       @bind:format="yyyy-MM-dd" />
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label"><b>To Date</b></label>
+                <input class="form-control"
+                       type="date"
+                       @bind="_toDt"
+                       @bind:format="yyyy-MM-dd" />
+            </div>
+
+            <div class="col-12 col-md-4 d-grid align-items-end">
+                <button type="button"
+                        class="btn btn-primary"
+                        @onclick="ExportPdf"
+                        disabled="@_exporting">
+                    @(_exporting ? "Exporting..." : "Export to PDF")
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_result))
+        {
+            <div class="alert alert-info mt-3 mb-0" style="white-space:pre-wrap;">
+                @_result
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private DateTime _fromDt = DateTime.Now.AddDays(-7);
+    private DateTime _toDt = DateTime.Now;
+
+    private bool _exporting;
+    private string _result = "";
+
+    private static DateOnly ToDateOnly(DateTime dt)
+        => DateOnly.FromDateTime(dt);
+
+    private async Task ExportPdf()
+    {
+        if (_exporting) return;
+
+        _exporting = true;
+        _result = "";
+
+        try
+        {
+            var from = ToDateOnly(_fromDt);
+            var to = ToDateOnly(_toDt);
+
+            if (from > to)
+            {
+                _result = "From date cannot be after To date.";
+                return;
+            }
+
+            var (entries, _) = await JournalService.GetPagedAsync(
+                page: 1,
+                pageSize: 5000,
+                from: from,
+                to: to
+            );
+
+            if (entries.Count == 0)
+            {
+                _result = "No entries found for selected date range.";
+                return;
+            }
+
+            var path = await ExportService.ExportPdfAsync(entries, from, to);
+
+            _result = $"PDF exported successfully.\nSaved at:\n{path}";
+
+            // Try opening the PDF automatically
+            try
+            {
+                await Launcher.Default.OpenAsync(new OpenFileRequest
+                {
+                    File = new ReadOnlyFile(path)
+                });
+            }
+            catch (Exception openEx)
+            {
+                _result += $"\n\n(Exported, but could not auto-open: {openEx.Message})";
+            }
+        }
+        catch (Exception ex)
+        {
+            _result = "PDF export failed:\n\n" + ex.ToString();
+        }
+        finally
+        {
+            _exporting = false;
+        }
+    }
+}
