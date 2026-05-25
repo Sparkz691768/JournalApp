@@ -25,12 +25,6 @@ Journal App lets users capture thoughts and experiences in a simple, organised w
 
 ---
 
-## Screenshots
-
-> Screenshots coming soon.
-
----
-
 ## Installation
 
 1. Clone the repository:
