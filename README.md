@@ -1,11 +1,9 @@
 # Journal App
 
-A personal journaling web application for writing, organising, and reflecting on daily entries — with a clean, distraction-free interface.
+A C# application for writing, organising, and reflecting on daily journal entries — with a clean, distraction-free interface.
 
 ![C#](https://img.shields.io/badge/C%23-239120?style=flat-square&logo=c-sharp&logoColor=white)
 ![.NET](https://img.shields.io/badge/.NET-512BD4?style=flat-square&logo=.net&logoColor=white)
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
 
 ---
 
@@ -36,15 +34,14 @@ Journal App lets users capture thoughts and experiences in a simple, organised w
 
 3. Build the solution (`Ctrl + Shift + B`).
 
-4. Run the project (`F5`) — the app will open in your default browser.
+4. Run the project (`F5`).
 
 ---
 
 ## What I Learned
 
-- Building web applications with C# and ASP.NET
+- Building applications with C# and ASP.NET
 - Structuring a full CRUD application end to end
-- Creating clean, readable HTML/CSS layouts
 - Managing persistent user content with a backend data layer
 
 ---
